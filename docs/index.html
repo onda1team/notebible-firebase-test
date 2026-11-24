@@ -2,7 +2,7 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; frame-src https://*.firebaseapp.com; style-src 'self'; img-src data:; connect-src https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.firebaseapp.com https://www.googleapis.com https://www.gstatic.com; base-uri 'none'; form-action 'none'; object-src 'none'">
-<meta name="robots" content="noindex,nofollow"><link rel="icon" href="data:,"><link rel="stylesheet" href="./style.css">
+<meta name="robots" content="noindex,nofollow"><link rel="icon" href="data:,"><link rel="stylesheet" href="./style.css?v=archive-r1">
 <title>주의열매 여백성경 · 동기화 검증판</title></head><body><main>
 <header class="hero"><p class="label">주의열매 · 동기화 검증판 <span id="version"></span></p><h1>오늘의 말씀을,<br>내일의 나에게</h1><p>기기를 바꾸고 앱을 업데이트해도 같은 기록이 남는지 확인합니다.</p>
 <p class="caption">이 테스트에는 실제 성경 노트나 주보는 넣지 마세요. 기존 비공개 여백성경과 연결되지 않습니다.</p></header>
@@ -31,7 +31,18 @@
 <h3>손글씨 여백</h3><div class="inkbuttons"><button id="pen" type="button" aria-pressed="false">손글씨 켜기</button><button id="undo" type="button" disabled>획 되돌리기</button></div>
 <div class="canvas-wrap"><canvas id="ink" aria-label="손글씨 입력 공간"></canvas></div><small>손글씨 모드를 끄면 여기에서 스크롤할 수 있습니다.</small>
 </section></div></div></div>
+<section class="sheet" id="cornell-originals" aria-label="읽기 전용 기존 기록 사본" hidden>
+<h2>기존 기록 사본 <small>읽기 전용</small></h2>
+<p class="demo">Cornell 백업을 일반 기록에 섞지 않고 원본 형태로 보관합니다. 이 화면은 전체 필기 배치·잉크·밑줄을 재현하지 않습니다. 원본 파일을 별도로 보관하세요.</p>
+<div class="buttons">
+<button id="original-list-button" type="button">서버 사본 보기</button>
+<button id="original-select" type="button">기기 백업 검토</button>
+<button id="original-confirm" class="primary" type="button" hidden>이 계정에 원본 사본 보관</button></div>
+<input id="original-file" type="file" accept=".json,application/json" hidden>
+<p id="original-plan"></p><p id="original-status" class="status" role="status"></p>
+<div id="original-list"></div>
+</section>
 <section class="sheet data"><details><summary>가상 기록 백업과 복구</summary><p>백업은 이 테스트 형식만 지원하며 복구 시 모두 새 기록 ID로 추가합니다. 가져온 기록도 서버에 보내려면 각각 저장하세요.</p>
 <button id="export" type="button">JSON 내보내기</button><button id="import" type="button">JSON 가져오기</button><input id="backup" type="file" accept="application/json,.json" hidden></details></section>
 </div><footer>별도 테스트 계정과 전용 서버만 사용합니다. 로그아웃 또는 페이지 재시작 뒤에는 다시 로그인해야 합니다.</footer>
-</main><script src="./config.js?v=3e11fa0"></script><script type="module" src="./app.mjs"></script></body></html>
+</main><script src="./config.js?v=3e11fa0"></script><script type="module" src="./app.mjs?v=archive-r1"></script></body></html>

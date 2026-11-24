@@ -1,17 +1,19 @@
 import {FIELDS,VERSION,blank,makeClient} from "./sync.mjs";
+import {installCornellOriginals} from "./cornell-originals-ui.mjs";
 import {firebaseConfig} from "./firebase-data.mjs";
 const $=id=>document.getElementById(id), say=s=>$("action-status").textContent=s, auth=s=>$("auth-status").textContent=s;
 $("version").textContent=VERSION;
 let backend=null,scope="";
 try{
  const cfg=firebaseConfig(window.YEO_SYNC_CONFIG);
- backend=await (await import("./firebase-web.mjs")).openBackend(cfg);
+ backend=await (await import("./firebase-web.mjs?v=archive-r1")).openBackend(cfg);
  scope=cfg.projectId+":"+location.pathname.replace(/\/index\.html$/,"/");
  $("signin").disabled=false;
  $("setup").textContent="승인된 Google 테스트 계정으로 로그인하세요.";
 }catch{
  $("setup").textContent="테스트 서버가 아직 연결되지 않았거나 불러올 수 없습니다. 실제 기록을 입력하지 마세요.";
 }
+const originals=installCornellOriginals(backend, busy => {$("logout").disabled=busy||client.state().busy.length>0;});
 let current=null, ink=[], pen=false, inFlight=null, activePointer=null, composing=false, op=0, timer=0, active=null;
 let pendingPull=null,lastPull=0;
 const canvas=$("ink"), ctx=canvas.getContext("2d");
@@ -28,9 +30,9 @@ function go(id){
 }
 function brief(r){let parts=[r.title,r.ref,r.passage,r.cue,r.note,r.takeaway,r.bulletin].filter(Boolean);parts.push("손글씨 "+r.ink.length+"획");return parts.join("\n\n");}
 function render(s){
- const me=s.user;$("content").hidden=!me;$("signin").hidden=!!me;$("logout").hidden=!me;
+ const me=s.user;originals.setOwner(me);$("content").hidden=!me;$("signin").hidden=!!me;$("logout").hidden=!me;
  if(!me)return;
- $("logout").disabled=s.busy.length>0;
+ $("logout").disabled=s.busy.length>0||originals.isBusy();
  const e=s.entries.find(x=>x.id===current), actionBusy=s.busy.includes(current), parent=$("records");
  const oldFocus=document.activeElement?.dataset?.record;
  parent.replaceChildren();
@@ -90,7 +92,7 @@ $("signin").onclick=async()=>{
  }finally{if(marker===op)$("signin").disabled=false;}
 };
 $("logout").onclick=async()=>{
- if(!active||client.state().busy.length)return;
+ if(!active||client.state().busy.length||originals.isBusy())return;
  op++;active=null;pendingPull=null;lastPull=0;clearInterval(timer);timer=0;current=null;ink=[];activePointer=null;inFlight=null;composing=false;pen=false;
  canvas.classList.remove("inking");$("pen").setAttribute("aria-pressed","false");$("pen").textContent="손글씨 켜기";
  client.stop();toFields(blank());$("signin").disabled=true;

@@ -1,6 +1,7 @@
 {
   "indexes": [],
   "fieldOverrides": [
-    {"collectionGroup":"notes","fieldPath":"payload","indexes":[]}
+    {"collectionGroup":"notes","fieldPath":"payload","indexes":[]},
+    {"collectionGroup":"cornellOriginals","fieldPath":"payload","indexes":[]}
   ]
 }

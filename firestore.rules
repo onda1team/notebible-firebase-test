@@ -24,6 +24,19 @@ service cloud.firestore {
       allow get: if owns(uid);
       allow list, write: if false;
     }
+    match /yeobaekTestAccounts/{uid}/cornellOriginals/{copyId} {
+      allow get: if tester(uid);
+      allow list: if tester(uid) && request.query.limit <= 31;
+      allow create: if tester(uid) && copyId.matches('^[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly(['schema', 'sourceVersion', 'digest', 'bytes', 'payload', 'createdAt'])
+        && request.resource.data.schema is int && request.resource.data.schema == 1
+        && request.resource.data.sourceVersion is int && request.resource.data.sourceVersion == 6
+        && request.resource.data.digest is string && request.resource.data.digest.matches('^[a-f0-9]{64}$')
+        && request.resource.data.bytes is int && request.resource.data.bytes > 0 && request.resource.data.bytes <= 800000
+        && request.resource.data.payload is bytes && request.resource.data.payload.size() == request.resource.data.bytes
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
     match /yeobaekTestAccounts/{uid}/notes/{recordId} {
       allow get: if tester(uid);
       allow list: if tester(uid) && request.query.limit <= 31;

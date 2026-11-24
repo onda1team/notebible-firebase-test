@@ -3,6 +3,7 @@ import {createRequire} from "node:module";
 import {readFile} from "node:fs/promises";
 import assert from "node:assert/strict";
 import {blank,makeClient} from "../docs/sync.mjs";
+import {prepareOriginals,createOriginalIfAbsent,validateOriginal} from "../docs/cornell-originals.mjs";
 import {createRecordApi} from "../docs/firebase-data.mjs";
 const address=process.env.FIRESTORE_EMULATOR_HOST;
 if(!/^127\.0\.0\.1:[1-9]\d{3,4}$/.test(address??""))throw Error("Run this only through a loopback Firestore emulator.");
@@ -87,6 +88,34 @@ try{
   assert.deepEqual(Object.fromEntries(d.state().entries.filter(e=>e.id!==id).map(x=>[x.id,[x.rev,x.payload.title,x.payload.bulletin,x.payload.ink]])),
     {[casId]:[2,two.remote.payload.title,record.bulletin,record.ink],[copy]:[1,two.payload.title,record.bulletin,record.ink]});
   console.log('Actual local Google Firestore emulator: two isolated SDK clients cross-read, competing revision and both copies, fresh v2 IDs/content all pass.');
+
+  const [original]=(await prepareOriginals(JSON.stringify({records:[{id:"GEN1",revision:4,state:{version:6,recordTitle:"가상 Cornell 제목",quotes:[{id:"JHN9",number:2}],quoteMemos:{a:"가상 주석"},ink:{note:[{mode:"pen",width:2,points:[{x:.9,y:.28}]}]},bulletinQuestions:[{question:"가상 질문",answer:"가상 응답"}]}}],backups:[]}))).candidates;
+  const orig=(d,who=owner,id=original.id)=>doc(d,"yeobaekTestAccounts",who,"cornellOriginals",id);
+  const originalValue=item=>({schema:1,sourceVersion:6,digest:item.digest,bytes:item.bytes,payload:Bytes.fromUint8Array(item.payload),createdAt:serverTimestamp()});
+  const asOriginal=snap=>snap.exists()?{id:snap.id,digest:snap.data().digest,bytes:snap.data().bytes,payload:snap.data().payload.toUint8Array()}:null;
+  const asIO=d=>({read:async key=>asOriginal(await getDocFromServer(orig(d,owner,key))),
+   transaction:(key,fn)=>runTransaction(d, tx=>fn({get:async()=>asOriginal(await tx.get(orig(d,owner,key))),set:item=>tx.set(orig(d,owner,key),originalValue(item))}),{maxAttempts:4})});
+  const db2=env.authenticatedContext(owner,token).firestore();
+  assert.deepEqual((await Promise.all([createOriginalIfAbsent(asIO(db),original),createOriginalIfAbsent(asIO(db2),original)])).sort(),["created","existing"]);
+  assert.equal((await validateOriginal(await asIO(db2).read(original.id))).state.quoteMemos.a,"가상 주석");
+  assert.equal(await createOriginalIfAbsent(asIO(db2),original),"existing");
+  await assertFails(getDocFromServer(orig(foreign)));
+  await assertFails(getDocFromServer(orig(anon)));
+  await assertFails(getDocFromServer(orig(unverified)));
+  await assertFails(getDocFromServer(orig(outsider,unlisted)));
+  await assertFails(getDocsFromServer(query(collection(outsider,"yeobaekTestAccounts",unlisted,"cornellOriginals"),limit(31))));
+  await assertFails(setDoc(orig(outsider,unlisted),originalValue(original)));
+  await assertFails(setDoc(orig(foreign),originalValue(original)));
+  await assertFails(setDoc(orig(db),originalValue(original)));
+  await assertFails(deleteDoc(orig(db)));
+  await assertFails(setDoc(orig(db,owner,"b".repeat(64)),{...originalValue(original),bytes:original.bytes+1}));
+  await assertFails(setDoc(orig(db,owner,"b".repeat(64)),{...originalValue(original),extra:"x"}));
+  await assertFails(getDocsFromServer(collection(db,"yeobaekTestAccounts",owner,"cornellOriginals")));
+  await assertFails(getDocsFromServer(query(collection(foreign,"yeobaekTestAccounts",owner,"cornellOriginals"),limit(31))));
+  const result=await assertSucceeds(getDocsFromServer(query(collection(db,"yeobaekTestAccounts",owner,"cornellOriginals"),limit(31))));
+  assert.equal(result.size,1);
+  assert.deepEqual((await getDocFromServer(row(db))).data().revision,2);
+  console.log("Cornell originals: exact structural archive roundtrip, duplicate concurrent import, deny cross-UID/anonymous/update/delete/malformed create, original notes unchanged.");
 }finally{
  await env.cleanup();
 }
