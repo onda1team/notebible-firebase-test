@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function tester(uid) {
+      return owns(uid)
+        && get(/databases/$(database)/documents/yeobaekTesters/$(uid)).data.enabled == true;
+    }
+    function validNewRecord(recordId) {
+      let next = request.resource.data;
+      return recordId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        && next.keys().hasAll(['schema', 'revision', 'payload', 'updatedAt'])
+        && next.keys().hasOnly(['schema', 'revision', 'payload', 'updatedAt'])
+        && next.schema is int && next.schema == 1
+        && next.revision is int && next.revision >= 1 && next.revision <= 9007199254740991
+        && next.payload is bytes && next.payload.size() > 0 && next.payload.size() <= 800000
+        && next.updatedAt == request.time;
+    }
+    match /yeobaekTesters/{uid} {
+      allow get: if owns(uid);
+      allow list, write: if false;
+    }
+    match /yeobaekTestAccounts/{uid}/notes/{recordId} {
+      allow get: if tester(uid);
+      allow list: if tester(uid) && request.query.limit <= 31;
+      allow create: if tester(uid) && validNewRecord(recordId)
+        && request.resource.data.revision == 1;
+      allow update: if tester(uid) && validNewRecord(recordId)
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if false;
+    }
+  }
+}

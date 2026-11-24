@@ -1,0 +1,6 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {"collectionGroup":"notes","fieldPath":"payload","indexes":[]}
+  ]
+}
