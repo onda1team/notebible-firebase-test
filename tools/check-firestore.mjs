@@ -91,8 +91,8 @@ try{
 
   const [original]=(await prepareOriginals(JSON.stringify({records:[{id:"GEN1",revision:4,state:{version:6,recordTitle:"가상 Cornell 제목",quotes:[{id:"JHN9",number:2}],quoteMemos:{a:"가상 주석"},ink:{note:[{mode:"pen",width:2,points:[{x:.9,y:.28}]}]},bulletinQuestions:[{question:"가상 질문",answer:"가상 응답"}]}}],backups:[]}))).candidates;
   const orig=(d,who=owner,id=original.id)=>doc(d,"yeobaekTestAccounts",who,"cornellOriginals",id);
-  const originalValue=item=>({schema:1,sourceVersion:6,digest:item.digest,bytes:item.bytes,payload:Bytes.fromUint8Array(item.payload),createdAt:serverTimestamp()});
-  const asOriginal=snap=>snap.exists()?{id:snap.id,digest:snap.data().digest,bytes:snap.data().bytes,payload:snap.data().payload.toUint8Array()}:null;
+  const originalValue=item=>({schema:1,sourceVersion:item.sourceVersion,digest:item.digest,bytes:item.bytes,payload:Bytes.fromUint8Array(item.payload),createdAt:serverTimestamp()});
+  const asOriginal=snap=>snap.exists()?{id:snap.id,digest:snap.data().digest,bytes:snap.data().bytes,sourceVersion:snap.data().sourceVersion,payload:snap.data().payload.toUint8Array()}:null;
   const asIO=d=>({read:async key=>asOriginal(await getDocFromServer(orig(d,owner,key))),
    transaction:(key,fn)=>runTransaction(d, tx=>fn({get:async()=>asOriginal(await tx.get(orig(d,owner,key))),set:item=>tx.set(orig(d,owner,key),originalValue(item))}),{maxAttempts:4})});
   const db2=env.authenticatedContext(owner,token).firestore();
@@ -115,7 +115,22 @@ try{
   const result=await assertSucceeds(getDocsFromServer(query(collection(db,"yeobaekTestAccounts",owner,"cornellOriginals"),limit(31))));
   assert.equal(result.size,1);
   assert.deepEqual((await getDocFromServer(row(db))).data().revision,2);
-  console.log("Cornell originals: exact structural archive roundtrip, duplicate concurrent import, deny cross-UID/anonymous/update/delete/malformed create, original notes unchanged.");
+  const rowV2={id:"GEN2",revision:5,dirty:false,state:{version:2,notesHeight:200,blocks:["note"],text:{note:"가상"},ink:{scripture:[],note:[{mode:"pen",width:3.1,points:[{x:.1,y:.4}]}]},bulletinQuestions:[{id:"q",reference:"test",question:"가상 질문",answer:"가상 답"}]}};
+  const [archiveV2]=(await prepareOriginals(JSON.stringify({records:[rowV2],backups:[]}))).candidates;
+  assert.equal(archiveV2.sourceVersion,2);
+  assert.equal(await createOriginalIfAbsent(asIO(db),archiveV2),"created");
+  assert.equal((await asIO(db2).read(archiveV2.id)).sourceVersion,2);
+  assert.deepEqual(await validateOriginal(await asIO(db2).read(archiveV2.id)),rowV2);
+  assert.equal(await createOriginalIfAbsent(asIO(db2),archiveV2),"existing");
+  await assertFails(getDocFromServer(orig(foreign,owner,archiveV2.id)));
+  await assertFails(getDocFromServer(orig(anon,owner,archiveV2.id)));
+  await assertFails(setDoc(orig(outsider,unlisted,archiveV2.id),originalValue(archiveV2)));
+  await assertFails(setDoc(orig(db,owner,archiveV2.id),originalValue(original)));
+  await assertFails(deleteDoc(orig(db,owner,archiveV2.id)));
+  await assertFails(setDoc(orig(db,owner,"c".repeat(64)),{...originalValue(archiveV2),sourceVersion:"2"}));
+  await assertFails(setDoc(orig(db,owner,"c".repeat(64)),{...originalValue(archiveV2),sourceVersion:3}));
+  assert.equal((await assertSucceeds(getDocsFromServer(query(collection(db,"yeobaekTestAccounts",owner,"cornellOriginals"),limit(31))))).size,2);
+  console.log("Cornell originals: v2 + preserved v6, exact roundtrip, duplicate safety, and deny foreign/anonymous/unapproved/overwrite/delete/invalid versions.");
 }finally{
  await env.cleanup();
 }

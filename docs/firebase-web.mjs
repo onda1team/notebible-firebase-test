@@ -1,7 +1,7 @@
 import {initializeApp} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 import {initializeAuth,inMemoryPersistence,browserPopupRedirectResolver,GoogleAuthProvider,signInWithPopup,signOut} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 import {initializeFirestore,memoryLocalCache,Bytes,collection,doc,getDocFromServer,getDocsFromServer,query,limit,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
-import {ARCHIVE_LIMIT,createOriginalIfAbsent} from "./cornell-originals.mjs";
+import {ARCHIVE_LIMIT,createOriginalIfAbsent} from "./cornell-originals.mjs?v=archive-v2-r1";
 import {MAX_RECORDS} from "./sync.mjs";
 import {createRecordApi} from "./firebase-data.mjs";
 
@@ -35,8 +35,8 @@ export function openBackend(config){
  function fromOriginal(snap){
   if(!snap.exists())return null;
   const d=snap.data();
-  if(d.schema!==1||d.sourceVersion!==6||!d.payload?.toUint8Array)throw Error("지원하지 않는 기존 기록 사본입니다.");
-  return {id:snap.id,digest:d.digest,bytes:d.bytes,payload:d.payload.toUint8Array()};
+  if(d.schema!==1||![2,6].includes(d.sourceVersion)||!d.payload?.toUint8Array)throw Error("지원하지 않는 기존 기록 사본입니다.");
+  return {id:snap.id,digest:d.digest,bytes:d.bytes,sourceVersion:d.sourceVersion,payload:d.payload.toUint8Array()};
  }
  async function writeOriginal(uid,item){
   const ref=doc(originalCollection(uid),item.id);
@@ -44,7 +44,7 @@ export function openBackend(config){
    read:async()=>fromOriginal(await getDocFromServer(ref)),
    transaction:(_id,fn)=>runTransaction(db,tx=>fn({
     get:async()=>fromOriginal(await tx.get(ref)),
-    set:x=>tx.set(ref,{schema:1,sourceVersion:6,digest:x.digest,bytes:x.bytes,payload:Bytes.fromUint8Array(x.payload),createdAt:serverTimestamp()}),
+    set:x=>tx.set(ref,{schema:1,sourceVersion:x.sourceVersion,digest:x.digest,bytes:x.bytes,payload:Bytes.fromUint8Array(x.payload),createdAt:serverTimestamp()}),
    }),{maxAttempts:4}),
   },item);
  }

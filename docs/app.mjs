@@ -1,12 +1,12 @@
 import {FIELDS,VERSION,blank,makeClient} from "./sync.mjs";
-import {installCornellOriginals} from "./cornell-originals-ui.mjs";
+import {installCornellOriginals} from "./cornell-originals-ui.mjs?v=archive-v2-r1";
 import {firebaseConfig} from "./firebase-data.mjs";
 const $=id=>document.getElementById(id), say=s=>$("action-status").textContent=s, auth=s=>$("auth-status").textContent=s;
 $("version").textContent=VERSION;
 let backend=null,scope="";
 try{
  const cfg=firebaseConfig(window.YEO_SYNC_CONFIG);
- backend=await (await import("./firebase-web.mjs?v=archive-r1")).openBackend(cfg);
+ backend=await (await import("./firebase-web.mjs?v=archive-v2-r1")).openBackend(cfg);
  scope=cfg.projectId+":"+location.pathname.replace(/\/index\.html$/,"/");
  $("signin").disabled=false;
  $("setup").textContent="승인된 Google 테스트 계정으로 로그인하세요.";
